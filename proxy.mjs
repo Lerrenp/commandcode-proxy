@@ -10,7 +10,17 @@ import { resolve, dirname } from 'path';
 import { fileURLToPath } from 'url';
 
 // ── 配置加载 ──────────────────────────────────────
-const __dirname = dirname(fileURLToPath(import.meta.url));
+// 打包成单文件 exe（bun build --compile / Node SEA）后 import.meta.url 指向打包器
+// 虚拟路径（Bun 为 B:\~BUN\root）或构建机上的源码路径，那里没有 config.json，
+// 会导致配置被静默忽略（端口回落到默认 3000）。故优先取「exe 自身所在目录」——
+// process.execPath 在编译产物内始终是 exe 的真实路径。
+// 直接跑源码时 execPath 是 node 安装目录、一般无 config.json，自然回退到模块目录，
+// 既有行为不变。另有 CC_CONFIG=<配置文件绝对路径> 可显式指定（见 loadConfig）。
+const __dirname = (() => {
+  const exeDir = dirname(process.execPath);
+  if (existsSync(resolve(exeDir, 'config.json'))) return exeDir;
+  return dirname(fileURLToPath(import.meta.url));
+})();
 
 function loadConfig() {
   const defaults = {
@@ -26,7 +36,9 @@ function loadConfig() {
     emptySystemPlaceholder: true, // 无 system prompt 时发空格占位，阻止 CC 上游注入 ~7.5K token 默认提示词（issue #17）
   };
 
-  const configPath = resolve(__dirname, 'config.json');
+  const configPath = process.env.CC_CONFIG
+    ? resolve(process.env.CC_CONFIG)
+    : resolve(__dirname, 'config.json');
   if (existsSync(configPath)) {
     try {
       const user = JSON.parse(readFileSync(configPath, 'utf-8'));

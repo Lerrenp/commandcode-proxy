@@ -8,6 +8,8 @@
   "scripts": {
     "start": "node proxy.mjs",
     "dev": "node --watch proxy.mjs",
+    "build:exe": "bun build --compile ./proxy.mjs --outfile dist/cc-proxy.exe",
+    "build:exe:all": "bun build --compile ./proxy.mjs --outfile dist/cc-proxy.exe && bun build --compile --target=bun-linux-x64 ./proxy.mjs --outfile dist/cc-proxy-linux && bun build --compile --target=bun-darwin-arm64 ./proxy.mjs --outfile dist/cc-proxy-mac",
     "docker:build": "docker build -t commandcode-proxy:latest .",
     "docker:build:multi": "docker buildx build --platform linux/amd64,linux/arm64 -t commandcode-proxy:latest ."
   },

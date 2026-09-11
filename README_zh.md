@@ -2,6 +2,8 @@
 
 > [English Docs](README.md)
 
+> **Fork 说明** —— 本仓库 fork 自 [MAXeaglet/commandcode-proxy](https://github.com/MAXeaglet/commandcode-proxy)，仅新增「预编译 Windows 单文件 exe」（见[预编译 Windows 单文件 exe](#预编译-windows-单文件-exe)）以及使其可用所需的配置文件路径修复，其余内容与上游一致。
+
 将 Command Code API 转换为 OpenAI / Anthropic 兼容接口的反代代理。单文件，零外部依赖。
 
 基于对官方 CLI 网络流量的分析，精确还原了 Command Code API 的请求协议（含设备指纹与生命周期预请求），并实现了多层兼容适配。
@@ -26,13 +28,39 @@ curl http://127.0.0.1:3050/v1/chat/completions \
   -d '{"model":"deepseek/deepseek-v4-flash","messages":[{"role":"user","content":"hi"}]}'
 ```
 
+## 预编译 Windows 单文件 exe
+
+本 fork 提供自包含的 Windows x64 可执行文件，**目标机器无需安装 Node.js**。从 [Releases](../../releases) 下载 `cc-proxy-windows-x64.zip`，解压后直接运行：
+
+```powershell
+.\cc-proxy.exe
+```
+
+`config.json` **必须与 exe 放在同一目录**：它是相对 exe 自身（`process.execPath`）定位的，不是相对当前工作目录，因此可在任意目录启动。环境变量依旧可覆盖配置文件：
+
+```powershell
+$env:PORT = "8080"; .\cc-proxy.exe                        # 监听 8080
+$env:LOG_FILE = ".\cc.log"; .\cc-proxy.exe                # 同时写入日志文件
+$env:CC_CONFIG = "D:\cc\my-config.json"; .\cc-proxy.exe   # 配置文件放在别处
+```
+
+自行构建（需安装 [Bun](https://bun.sh)）：
+
+```bash
+npm run build:exe      # Windows x64            → dist/cc-proxy.exe
+npm run build:exe:all  # Windows + Linux + macOS → dist/cc-proxy{,-linux,-mac}
+```
+
+> 二进制约 94 MB（内嵌 Bun 运行时）且**未签名**，首次运行会触发 Windows SmartScreen 警告。`dist/` 已在 `.gitignore` 中忽略——exe 仅作为 Release 附件分发，不提交进仓库。
+
 ## 文件结构
 
 ```
 commandcode/
 ├── config.json           # 端口 / 日志路径等
 ├── LICENSE               # MIT License
-├── package.json          # npm start / npm run dev
+├── package.json          # npm start / npm run dev / npm run build:exe
+├── dist/                 # 构建产物（已 gitignore）：cc-proxy.exe
 ├── proxy.mjs             # 单文件核心代理（~1900 行）
 ├── Dockerfile            # 容器构建文件（node:22-alpine）
 ├── docker-compose.yml    # 容器编排
