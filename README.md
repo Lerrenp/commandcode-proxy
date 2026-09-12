@@ -44,6 +44,8 @@ $env:LOG_FILE = ".\cc.log"; .\cc-proxy.exe                # also log to a file
 $env:CC_CONFIG = "D:\cc\my-config.json"; .\cc-proxy.exe   # config file elsewhere
 ```
 
+If no `config.json` is found next to the executable (or at the `CC_CONFIG` path), the proxy **generates a default `config.json` there** — pointing at `https://api.commandcode.ai`, port `3050` — and logs its path, instead of silently falling back to built-in defaults (port `3000`). If that location is not writable (e.g. a read-only directory), it logs a warning and starts with the built-in defaults.
+
 Build it yourself (requires [Bun](https://bun.sh)):
 
 ```bash

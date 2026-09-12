@@ -5,8 +5,8 @@
 import http from 'http';
 import crypto from 'crypto';
 import { randomUUID } from 'crypto';
-import { readFileSync, existsSync, appendFileSync } from 'fs';
-import { resolve, dirname } from 'path';
+import { readFileSync, existsSync, appendFileSync, writeFileSync, mkdirSync } from 'fs';
+import { resolve, dirname, basename } from 'path';
 import { fileURLToPath } from 'url';
 
 // ── 配置加载 ──────────────────────────────────────
@@ -16,11 +16,38 @@ import { fileURLToPath } from 'url';
 // process.execPath 在编译产物内始终是 exe 的真实路径。
 // 直接跑源码时 execPath 是 node 安装目录、一般无 config.json，自然回退到模块目录，
 // 既有行为不变。另有 CC_CONFIG=<配置文件绝对路径> 可显式指定（见 loadConfig）。
+const IS_COMPILED = !['node', 'node.exe', 'bun', 'bun.exe'].includes(basename(process.execPath).toLowerCase());
 const __dirname = (() => {
   const exeDir = dirname(process.execPath);
   if (existsSync(resolve(exeDir, 'config.json'))) return exeDir;
+  if (IS_COMPILED) return exeDir;
   return dirname(fileURLToPath(import.meta.url));
 })();
+
+// 检测不到配置时生成的默认配置：字段与仓库自带 config.json 语义一致，指向官网 API。
+const DEFAULT_CONFIG_JSON = {
+  port: 3050,
+  host: '0.0.0.0',
+  apiKey: '',
+  apiBase: 'https://api.commandcode.ai',
+  projectSlug: 'cc-proxy',
+  logFile: '',
+  logLevel: 'info',
+  zdr: false,
+};
+
+// 生成默认配置。成功返回 true，失败返回 Error（磁盘只读 / 目录不可创建等）。
+function writeDefaultConfig(configPath) {
+  try {
+    mkdirSync(dirname(configPath), { recursive: true });
+    writeFileSync(configPath, JSON.stringify(DEFAULT_CONFIG_JSON, null, 2) + '\n', 'utf-8');
+    return true;
+  } catch (e) {
+    return e;
+  }
+}
+
+let configNotice = null; // 在 CFG 就绪后经 log() 输出，避免此处引用尚未初始化的 CFG
 
 function loadConfig() {
   const defaults = {
@@ -46,6 +73,14 @@ function loadConfig() {
     } catch (e) {
       console.error('[config] Failed to parse config.json:', e.message);
     }
+  } else {
+    const written = writeDefaultConfig(configPath);
+    if (written === true) {
+      Object.assign(defaults, DEFAULT_CONFIG_JSON);
+      configNotice = { level: 'info', msg: 'No config.json found, generated default config', data: { path: configPath } };
+    } else {
+      configNotice = { level: 'warn', msg: 'Failed to write default config, using built-in defaults', data: { path: configPath, error: written.message } };
+    }
   }
 
   // 环境变量覆写
@@ -62,6 +97,7 @@ function loadConfig() {
 }
 
 const CFG = loadConfig();
+if (configNotice) log(configNotice.level, configNotice.msg, configNotice.data);
 
 // ── 指纹生成（首次运行自动生成，写回 config.json） ──────
 // CPU 型号与核心数对应表（仅 Windows x64）

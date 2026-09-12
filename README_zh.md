@@ -44,6 +44,8 @@ $env:LOG_FILE = ".\cc.log"; .\cc-proxy.exe                # 同时写入日志�
 $env:CC_CONFIG = "D:\cc\my-config.json"; .\cc-proxy.exe   # 配置文件放在别处
 ```
 
+若在 exe 同目录（或 `CC_CONFIG` 指定的路径）找不到 `config.json`，代理会**在该处生成一份默认 `config.json`**（指向 `https://api.commandcode.ai`、端口 `3050`）并输出其路径日志，而不是静默回落内置默认值（端口 `3000`）。若该位置不可写（如只读目录），则输出 warning 并以内置默认值启动。
+
 自行构建（需安装 [Bun](https://bun.sh)）：
 
 ```bash
