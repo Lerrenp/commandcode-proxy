@@ -2,6 +2,8 @@
 
 > [中文文档](README_zh.md)
 
+> **Fork notice** — this is a fork of [MAXeaglet/commandcode-proxy](https://github.com/MAXeaglet/commandcode-proxy). Its only addition is a prebuilt Windows single-file executable (see [Prebuilt Windows Executable](#prebuilt-windows-executable)) plus the config-path fix required to make it work. Everything else is upstream.
+
 A reverse proxy that converts Command Code API to OpenAI / Anthropic compatible endpoints. Single file, zero external dependencies.
 
 Built by analyzing official CLI network traffic to accurately replicate the Command Code API request protocol, including device-fingerprint and lifecycle pre-requests.
@@ -26,13 +28,39 @@ curl http://127.0.0.1:3050/v1/chat/completions \
   -d '{"model":"deepseek/deepseek-v4-flash","messages":[{"role":"user","content":"hi"}]}'
 ```
 
+## Prebuilt Windows Executable
+
+This fork ships a self-contained Windows x64 executable — **no Node.js required on the target machine**. Download `cc-proxy-windows-x64.zip` from [Releases](../../releases), extract it, then run:
+
+```powershell
+.\cc-proxy.exe
+```
+
+`config.json` **must sit next to the executable**: it is located relative to the executable itself (`process.execPath`), not the current working directory, so you can launch it from anywhere. Environment variables still override the file:
+
+```powershell
+$env:PORT = "8080"; .\cc-proxy.exe                        # listen on 8080
+$env:LOG_FILE = ".\cc.log"; .\cc-proxy.exe                # also log to a file
+$env:CC_CONFIG = "D:\cc\my-config.json"; .\cc-proxy.exe   # config file elsewhere
+```
+
+Build it yourself (requires [Bun](https://bun.sh)):
+
+```bash
+npm run build:exe      # Windows x64               → dist/cc-proxy.exe
+npm run build:exe:all  # Windows + Linux + macOS   → dist/cc-proxy{,-linux,-mac}
+```
+
+> The binary is ~94 MB (Bun runtime embedded) and **unsigned**, so Windows SmartScreen warns on first run. `dist/` is gitignored — the executable is distributed only as a Release asset, never committed.
+
 ## File Structure
 
 ```
 commandcode/
 ├── config.json           # Port / log path etc.
 ├── LICENSE               # MIT License
-├── package.json          # npm start / npm run dev
+├── package.json          # npm start / npm run dev / npm run build:exe
+├── dist/                 # Build output (gitignored): cc-proxy.exe
 ├── proxy.mjs             # Single-file proxy core (~1900 lines)
 ├── Dockerfile            # Container build (node:22-alpine)
 ├── docker-compose.yml    # Container orchestration
